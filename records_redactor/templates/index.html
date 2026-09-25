@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Records Redactor</title>
+  <style>
+    :root { --ink: #16211f; --muted: #63716d; --paper: #f6f8f3; --line: #dce5df; --teal: #087f76; --teal-dark: #075d58; --coral: #c84d37; --white: #fff; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; color: var(--ink); background: radial-gradient(circle at 85% 8%, #d8ece3 0, transparent 30%), var(--paper); font: 16px/1.5 Georgia, serif; }
+    main { width: min(980px, calc(100% - 36px)); margin: 0 auto; padding: 54px 0 70px; }
+    .eyebrow { color: var(--teal); font: 700 12px/1.2 ui-sans-serif, system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; }
+    h1 { max-width: 650px; margin: 10px 0 12px; font-size: clamp(42px, 7vw, 78px); line-height: .98; letter-spacing: -.04em; }
+    .intro { max-width: 620px; margin: 0 0 34px; color: var(--muted); font-size: 19px; }
+    .workspace { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(260px, .85fr); gap: 22px; align-items: start; }
+    .panel { padding: 24px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255,255,255,.78); box-shadow: 0 16px 44px rgba(24, 53, 45, .07); }
+    .dropzone { display: grid; min-height: 235px; place-items: center; padding: 25px; border: 1.5px dashed #8ab6a8; border-radius: 7px; background: #eef7f1; text-align: center; cursor: pointer; transition: border-color .2s, background .2s, transform .2s; }
+    .dropzone:hover, .dropzone.dragging { border-color: var(--teal); background: #e2f2e9; transform: translateY(-2px); }
+    .upload-mark { display: grid; width: 52px; height: 52px; margin: 0 auto 13px; place-items: center; border-radius: 50%; color: var(--white); background: var(--teal); font: 28px ui-sans-serif, system-ui, sans-serif; }
+    .dropzone strong { display: block; font: 700 18px ui-sans-serif, system-ui, sans-serif; }
+    .dropzone span { display: block; margin-top: 5px; color: var(--muted); font: 14px ui-sans-serif, system-ui, sans-serif; }
+    input[type=file] { display: none; }
+    .file-name { min-height: 24px; margin: 15px 0 0; color: var(--teal-dark); font: 600 14px ui-sans-serif, system-ui, sans-serif; }
+    .controls { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 22px; }
+    label { color: var(--muted); font: 14px ui-sans-serif, system-ui, sans-serif; }
+    .switch { display: inline-flex; align-items: center; gap: 9px; cursor: pointer; }
+    .switch input { width: 17px; height: 17px; accent-color: var(--teal); }
+    button { border: 0; border-radius: 5px; padding: 12px 18px; color: var(--white); background: var(--teal); font: 700 14px ui-sans-serif, system-ui, sans-serif; cursor: pointer; }
+    button:hover { background: var(--teal-dark); } button:disabled { opacity: .5; cursor: wait; }
+    .side h2 { margin: 0 0 10px; font: 700 20px ui-sans-serif, system-ui, sans-serif; }
+    .side p { margin: 0; color: var(--muted); }
+    .side ul { margin: 20px 0 0; padding-left: 20px; color: var(--muted); }
+    #status { margin-top: 16px; color: var(--muted); font: 14px ui-sans-serif, system-ui, sans-serif; }
+    #results { display: none; margin-top: 22px; }
+    .result-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); padding-bottom: 14px; }
+    .result-head h2 { margin: 0; font: 700 21px ui-sans-serif, system-ui, sans-serif; }
+    .meta { color: var(--muted); font: 13px ui-sans-serif, system-ui, sans-serif; }
+    .finding { margin-top: 12px; padding: 14px; border-left: 4px solid var(--coral); background: #fff4ef; }
+    .finding strong { font: 700 15px ui-sans-serif, system-ui, sans-serif; }
+    .finding small { display: block; margin-top: 3px; color: var(--muted); font: 13px ui-sans-serif, system-ui, sans-serif; }
+    .pii { margin-top: 22px; color: var(--muted); font: 14px ui-sans-serif, system-ui, sans-serif; }
+    .pii strong { color: var(--ink); }
+    .empty { margin-top: 14px; color: var(--teal-dark); font: 14px ui-sans-serif, system-ui, sans-serif; }
+    @media (max-width: 720px) { main { padding-top: 32px; } .workspace { grid-template-columns: 1fr; } .controls { align-items: flex-start; flex-direction: column; } button { width: 100%; } }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="eyebrow">Clinical document review</div>
+    <h1>Find what needs a second look.</h1>
+    <p class="intro">Upload a patient-record PDF to check configured lab ranges and identify common personally identifiable information.</p>
+
+    <section class="workspace">
+      <form class="panel" id="upload-form">
+        <label class="dropzone" id="dropzone" for="file-input">
+          <span>
+            <span class="upload-mark" aria-hidden="true">↑</span>
+            <strong>Drop a PDF here</strong>
+            <span>or choose a file from your computer</span>
+          </span>
+          <input id="file-input" name="file" type="file" accept="application/pdf" required>
+        </label>
+        <div class="file-name" id="file-name">No document selected</div>
+        <div class="controls">
+          <label class="switch"><input id="ocr-input" type="checkbox" checked> Use OCR for scanned pages</label>
+          <button id="submit-button" type="submit">Analyze document</button>
+        </div>
+        <div id="status" role="status" aria-live="polite"></div>
+      </form>
+
+      <aside class="panel side">
+        <h2>What gets checked</h2>
+        <p>Results are compared with the ranges in the service configuration.</p>
+        <ul>
+          <li>Low and high lab values</li>
+          <li>Email and phone numbers</li>
+          <li>DOB, SSN, and medical record numbers</li>
+        </ul>
+      </aside>
+    </section>
+
+    <section class="panel" id="results" aria-live="polite"></section>
+  </main>
+  <script>
+    const form = document.querySelector('#upload-form');
+    const input = document.querySelector('#file-input');
+    const dropzone = document.querySelector('#dropzone');
+    const fileName = document.querySelector('#file-name');
+    const status = document.querySelector('#status');
+    const results = document.querySelector('#results');
+    const button = document.querySelector('#submit-button');
+
+    function showFile(file) {
+      if (file && file.type === 'application/pdf') fileName.textContent = file.name;
+      else if (file) { input.value = ''; fileName.textContent = 'Please choose a PDF file'; }
+    }
+    input.addEventListener('change', () => showFile(input.files[0]));
+    ['dragenter', 'dragover'].forEach(event => dropzone.addEventListener(event, e => { e.preventDefault(); dropzone.classList.add('dragging'); }));
+    ['dragleave', 'drop'].forEach(event => dropzone.addEventListener(event, e => { e.preventDefault(); dropzone.classList.remove('dragging'); }));
+    dropzone.addEventListener('drop', e => { input.files = e.dataTransfer.files; showFile(input.files[0]); });
+
+    function render(data) {
+      const abnormal = data.abnormal_results || [];
+      const pii = data.pii_findings || [];
+      const findings = abnormal.length
+        ? abnormal.map(item => `<div class="finding"><strong>${item.test}: ${item.value} ${item.unit} (${item.status})</strong><small>Configured range: ${item.low}–${item.high} ${item.unit}</small></div>`).join('')
+        : '<div class="empty">No configured out-of-range results found.</div>';
+      const piiText = data.pii_detected
+        ? `<div class="pii"><strong>PII detected:</strong> ${pii.map(item => item.category.replaceAll('_', ' ')).join(', ')}.</div>`
+        : '<div class="pii"><strong>No configured PII patterns detected.</strong></div>';
+      results.innerHTML = `<div class="result-head"><h2>Review summary</h2><div class="meta">${data.pages} page${data.pages === 1 ? '' : 's'} · ${data.ocr_used ? 'OCR used' : 'text extracted'}</div></div>${findings}${piiText}`;
+      results.style.display = 'block';
+    }
+
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      if (!input.files[0]) return;
+      button.disabled = true; status.textContent = 'Analyzing document…'; results.style.display = 'none';
+      const body = new FormData(); body.append('file', input.files[0]);
+      try {
+        const response = await fetch(`/analyze?use_ocr=${document.querySelector('#ocr-input').checked}`, { method: 'POST', body });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || 'The document could not be analyzed.');
+        render(data); status.textContent = 'Analysis complete. Review the findings below.';
+      } catch (error) { status.textContent = error.message; }
+      finally { button.disabled = false; }
+    });
+  </script>
+</body>
+</html>

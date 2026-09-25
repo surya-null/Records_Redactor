@@ -1,0 +1,17 @@
+# Edit this file to match the population, units, and lab policy you use.
+reference_ranges:
+  - name: Hemoglobin
+    aliases: [Hgb, Hb]
+    unit: g/dL
+    low: 12.0
+    high: 17.5
+  - name: Glucose
+    aliases: [Blood glucose, Glu]
+    unit: mg/dL
+    low: 70
+    high: 99
+  - name: Creatinine
+    aliases: [Cr]
+    unit: mg/dL
+    low: 0.6
+    high: 1.3
